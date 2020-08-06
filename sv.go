@@ -16,17 +16,18 @@ import (
 const defaultDirectory = "."
 
 var (
-	directory string
-	port      int
-	forbidden string
-	lazy, help      bool
+	directory  string
+	port       int
+	forbidden  string
+	lazy, help bool
 )
+
 func init() {
 	pflag.StringVarP(&directory, "dir", "d", defaultDirectory, "Folder to be broadcast")
 	pflag.IntVarP(&port, "port", "p", 8080, "Address on which server is broadcasted")
 	pflag.StringVarP(&forbidden, "exclude", "x", "^\\.", "Exclude directories with matching regexp pattern")
-	pflag.BoolVarP(&lazy, "lazy", "l", false, "Enables lazy loading of files")
-	pflag.BoolVarP(&help, "help","h",false, "Call help")
+	pflag.BoolVarP(&lazy, "lazy", "l", true, "Enables lazy loading of files. caution: if false will load all files to memory on startup")
+	pflag.BoolVarP(&help, "help", "h", false, "Call help")
 	pflag.Lookup("help").Hidden = true
 	pflag.Parse()
 	if help {
@@ -56,12 +57,23 @@ func run() error {
 				return nil
 			}
 		}
+		ep := &endpoint{path: path, contentType: getContentType(file)}
+		if !lazy {
+			f, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			ep.content, err = ioutil.ReadAll(f)
+			if err != nil {
+				return err
+			}
+		}
 		if file == "index.html" {
-			fmt.Printf("[srv] %s accesible on localhost:%d/%s\n",file,port,dir)
-			http.Handle("/"+dir, &endpoint{path: path, contentType: getContentType(file)})
+			fmt.Printf("[srv] %s accesible on localhost:%d/%s\n", file, port, dir)
+			http.Handle("/" + dir,ep )
 		} else {
-			fmt.Printf("[srv] %s accesible on localhost:%d/%s\n",file,port,path)
-			http.Handle("/"+path, &endpoint{path: path, contentType: getContentType(file)})
+			fmt.Printf("[srv] %s accesible on localhost:%d/%s\n", file, port, path)
+			http.Handle("/"+path, ep)
 		}
 		return nil
 	})
@@ -72,22 +84,23 @@ func run() error {
 	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
-
 func main() {
 	if err := run(); err != nil {
 		fmt.Println("[err] ", err)
 		os.Exit(1)
 	}
 }
+
 const helpMsg = `sv is a tool to run a http server easy-peasy.
 
 Usages:
 	sv [flags]
 Flags:`
+
 func printHelp() {
 	fmt.Println(helpMsg)
 	pflag.VisitAll(func(flag *pflag.Flag) {
-		fmt.Printf("\t-%s,  --%s   %s (default %s)\n ",flag.Shorthand,flag.Name,flag.Usage,flag.DefValue )
+		fmt.Printf("\t-%s,  --%s   %s (default %s)\n ", flag.Shorthand, flag.Name, flag.Usage, flag.DefValue)
 	})
 }
 
@@ -102,13 +115,6 @@ func (ep *endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var f *os.File
 	var err error
 	if !lazy {
-		ep.once.Do(func() {
-			f, _ = os.Open(ep.path)
-			ep.content, err = ioutil.ReadAll(f)
-		})
-		if err != nil {
-			panic(err)
-		}
 		w.Header().Add("Content-Type", ep.contentType)
 		w.Write(ep.content)
 		return
