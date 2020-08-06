@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 )
 
 const defaultDirectory = "."
@@ -108,7 +107,6 @@ type endpoint struct {
 	path        string
 	contentType string
 	content     []byte
-	once        sync.Once
 }
 
 func (ep *endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
