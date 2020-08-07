@@ -1,3 +1,5 @@
 .idea/*
 *.exe
 *.zip
+dist/*
+index.html

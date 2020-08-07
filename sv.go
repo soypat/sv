@@ -12,7 +12,10 @@ import (
 	"strings"
 )
 
-const defaultDirectory = "."
+const (
+	defaultDirectory = "."
+	fpsep            = string(filepath.Separator)
+)
 
 var (
 	directory  string
@@ -46,17 +49,18 @@ func run() error {
 		return err
 	}
 	err = filepath.Walk(directory, func(path string, info os.FileInfo, err error) error {
+		path = strings.ReplaceAll(path, fpsep, "/")
 		if info.IsDir() {
 			return nil
 		}
 		dir, file := filepath.Split(path)
-		folders := strings.Split(dir, string(filepath.Separator))
+		folders := strings.Split(dir, "/")
 		for _, folder := range folders {
 			if re.MatchString(folder) {
 				return nil
 			}
 		}
-		ep := &endpoint{path: path, contentType: getContentType(file)}
+		ep := endpoint{path: path, contentType: getContentType(file)}
 		if !lazy {
 			f, err := os.Open(path)
 			if err != nil {
@@ -68,11 +72,11 @@ func run() error {
 			}
 		}
 		if file == "index.html" {
-			fmt.Printf("[srv] %s accesible on localhost:%d/%s\n", file, port, dir)
-			http.Handle("/" + dir,ep )
+			fmt.Printf("[srv] %s accesible on localhost:%d%s%s\n", file, port, "/", dir)
+			http.Handle("/"+dir, &ep)
 		} else {
-			fmt.Printf("[srv] %s accesible on localhost:%d/%s\n", file, port, path)
-			http.Handle("/"+path, ep)
+			fmt.Printf("[srv] %s accesible on localhost:%d%s%s\n", file, port, "/", path)
+			http.Handle("/"+path, &ep)
 		}
 		return nil
 	})
