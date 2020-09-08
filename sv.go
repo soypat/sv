@@ -28,7 +28,7 @@ var (
 )
 
 func init() {
-	pflag.StringVarP(&host, "host", "a", defaultDirectory, "Folder to be broadcast")
+	pflag.StringVarP(&host, "host", "a", "0.0.0.0", "Host address. Default broadcasts to public. Use '127.0.0.1' or 'localhost' for local broadcasting.")
 	pflag.StringVarP(&directory, "dir", "d", defaultDirectory, "Folder to be broadcast")
 	pflag.IntVarP(&port, "port", "p", 8080, "Address on which server is broadcasted")
 	pflag.IntVarP(&maxInlineSize, "inlinesize", "k", 24, "Max size of file in MB before being downloaded as attachment (see 'Content-Disposition')")
@@ -38,7 +38,6 @@ func init() {
 	pflag.BoolVarP(&quiet, "quiet", "q", false, "Run sv quietly (no output).")
 	pflag.Lookup("help").Hidden = true
 	pflag.Parse()
-	host = "localhost"
 	if help {
 		printHelp()
 		os.Exit(0)

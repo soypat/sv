@@ -1,6 +1,6 @@
 binname=sv
 buildflags=-ldflags="-s -w" -i
-version=1.0.0
+version=v1.1.1
 distr: win
 	cp README.md README.txt
 	zip -j ${binname}-${version}.zip bin/${binname}.exe README.txt
