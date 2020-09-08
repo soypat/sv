@@ -28,7 +28,6 @@ var (
 )
 
 func init() {
-	io.Copy()
 	pflag.StringVarP(&host, "host", "a", defaultDirectory, "Folder to be broadcast")
 	pflag.StringVarP(&directory, "dir", "d", defaultDirectory, "Folder to be broadcast")
 	pflag.IntVarP(&port, "port", "p", 8080, "Address on which server is broadcasted")
