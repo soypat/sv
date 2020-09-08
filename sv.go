@@ -4,34 +4,42 @@ import (
 	"errors"
 	"fmt"
 	"github.com/spf13/pflag"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 const (
+	bytesInMB        = 1000 * 1000
 	defaultDirectory = "."
 	fpsep            = string(filepath.Separator)
 )
 
 var (
-	directory  string
-	port       int
-	forbidden  string
-	lazy, help bool
+	directory, host         string
+	port, maxInlineSize int
+	forbidden           string
+	lazy, help, quiet   bool
 )
 
 func init() {
+	io.Copy()
+	pflag.StringVarP(&host, "host", "a", defaultDirectory, "Folder to be broadcast")
 	pflag.StringVarP(&directory, "dir", "d", defaultDirectory, "Folder to be broadcast")
 	pflag.IntVarP(&port, "port", "p", 8080, "Address on which server is broadcasted")
+	pflag.IntVarP(&maxInlineSize, "inlinesize", "k", 24, "Max size of file in MB before being downloaded as attachment (see 'Content-Disposition')")
 	pflag.StringVarP(&forbidden, "exclude", "x", "^\\.", "Exclude directories with matching regexp pattern")
 	pflag.BoolVarP(&lazy, "lazy", "l", true, "Enables lazy loading of files. caution: if false will load all files to memory on startup")
 	pflag.BoolVarP(&help, "help", "h", false, "Call help")
+	pflag.BoolVarP(&quiet, "quiet", "q", false, "Run sv quietly (no output).")
 	pflag.Lookup("help").Hidden = true
 	pflag.Parse()
+	host = "localhost"
 	if help {
 		printHelp()
 		os.Exit(0)
@@ -71,20 +79,15 @@ func run() error {
 				return err
 			}
 		}
-		if file == "index.html" {
-			fmt.Printf("[srv] %s accesible on localhost:%d%s%s\n", file, port, "/", dir)
-			http.Handle("/"+dir, &ep)
-		} else {
-			fmt.Printf("[srv] %s accesible on localhost:%d%s%s\n", file, port, "/", path)
-			http.Handle("/"+path, &ep)
-		}
+		http.Handle(ep.address(), &ep)
+		printf("add %s on %s:%d%s",file, host, port, ep.address())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	fmt.Printf("[inf] done. listening and serving...")
-	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	infof("done. listening and serving...")
+	return http.ListenAndServe(fmt.Sprintf("%s:%d",host, port), nil)
 }
 
 func main() {
@@ -113,6 +116,18 @@ type endpoint struct {
 	content     []byte
 }
 
+func (ep endpoint) address() (adress string) {
+	if ep.fileName() == "index.html" {
+		return fmt.Sprintf("/%s", strings.TrimSuffix(ep.path, ep.fileName()))
+	}
+	return fmt.Sprintf("/%s", ep.path)
+}
+
+func (ep endpoint) fileName() string {
+	_, file := filepath.Split(ep.path)
+	return file
+}
+
 func (ep *endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var f *os.File
 	var err error
@@ -123,16 +138,39 @@ func (ep *endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	f, err = os.Open(ep.path)
 	if err != nil {
+		errorf("%s",err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	b, err := ioutil.ReadAll(f)
+	info, err := f.Stat()
 	if err != nil {
+		errorf("%s",err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	if info.Size() > int64(maxInlineSize*bytesInMB) {
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, ep.fileName()))
+	}
 	w.Header().Add("Content-Type", ep.contentType)
-	w.Write(b)
+	w.Header().Set("Content-Length", strconv.Itoa(int(info.Size())))
+	n, err := io.Copy(w, f)
+	if err != nil {
+		errorf("while serving %s, %d bytes copied: %s", ep.path, n, err)
+	}
+	return
+}
+
+func infof(format string, args ...interface{})  { logf("inf", format, args) }
+func printf(format string, args ...interface{}) { logf("srv", format, args) }
+func errorf(format string, args ...interface{}) { logf("err", format, args) }
+func logf(tag, format string, args []interface{}) {
+	if !quiet {
+		msg := fmt.Sprintf(format, args...)
+		if args == nil {
+			msg = fmt.Sprintf(format)
+		}
+		fmt.Println(fmt.Sprintf("[%s] %s", tag, msg))
+	}
 }
 
 func getContentType(filename string) string {
