@@ -3,3 +3,5 @@
 *.zip
 dist/*
 index.html
+*_bin
+*.css

@@ -82,7 +82,7 @@ func run() error {
 			}
 		}
 		http.Handle(ep.address(), &ep)
-		printf("add %s on %s:%d%s", file, host, port, ep.address())
+		printf("add %s on http://%s:%d%s", file, host, port, ep.address())
 		return nil
 	})
 	if err != nil {
@@ -176,13 +176,16 @@ func logf(tag, format string, args []interface{}) {
 }
 
 func getContentType(filename string) string {
+
 	var contentType string
-	fileTypeIndex := strings.LastIndex(filename, ".")
-	if fileTypeIndex == -1 || len(filename) == fileTypeIndex+1 { // si el nombre termina con un punto (is that even legal?)
-		contentType = "application/octet-stream"
-		return contentType // Or next part errors!
-	}
-	ext := filename[fileTypeIndex+1:] // file extension
+	// fileTypeIndex := strings.LastIndex(filename, ".")
+	// if fileTypeIndex == -1 || len(filename) == fileTypeIndex+1 { // si el nombre termina con un punto (is that even legal?)
+	// 	contentType = "application/octet-stream"
+	// 	return contentType // Or next part errors!
+	// }
+	// ext := filename[fileTypeIndex+1:] // file extension
+	ext := filepath.Ext(filename)
+	ext = strings.Replace(ext, ".", "", 1)
 	switch ext {
 	// Typical Web stuff
 	case "js", "mjs":
@@ -251,10 +254,13 @@ func getContentType(filename string) string {
 		// Plaintext
 	case "txt", "dat", "md", ".gitignore":
 		contentType = "text/plain"
-	case "go", "h", "c", "py", "tex", "sty", "m": // program
+	case "go", "h", "c", "py", "tex", "sty", "m", "sum", "mod", "lock": // program
 		contentType = "text/plain"
 	default:
 		contentType = "application/octet-stream"
+	}
+	if strings.Contains(contentType, "text/") {
+		contentType += "; charset=utf-8\n\n"
 	}
 	return contentType
 }
