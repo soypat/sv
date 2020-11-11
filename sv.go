@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/spf13/pflag"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -12,6 +11,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/spf13/pflag"
 )
 
 const (
@@ -21,7 +22,7 @@ const (
 )
 
 var (
-	directory, host         string
+	directory, host     string
 	port, maxInlineSize int
 	forbidden           string
 	lazy, help, quiet   bool
@@ -49,6 +50,9 @@ func run() error {
 		return err
 	} else if !f.IsDir() {
 		return errors.New(f.Name() + " is not a directory")
+	}
+	if os.Chdir(directory) == nil {
+		directory = "."
 	}
 	re, err := regexp.Compile(forbidden)
 	if err != nil {
@@ -78,14 +82,14 @@ func run() error {
 			}
 		}
 		http.Handle(ep.address(), &ep)
-		printf("add %s on %s:%d%s",file, host, port, ep.address())
+		printf("add %s on %s:%d%s", file, host, port, ep.address())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 	infof("done. listening and serving...")
-	return http.ListenAndServe(fmt.Sprintf("%s:%d",host, port), nil)
+	return http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), nil)
 }
 
 func main() {
@@ -136,13 +140,13 @@ func (ep *endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	f, err = os.Open(ep.path)
 	if err != nil {
-		errorf("%s",err)
+		errorf("%s", err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	info, err := f.Stat()
 	if err != nil {
-		errorf("%s",err)
+		errorf("%s", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
