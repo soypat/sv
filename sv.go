@@ -33,7 +33,7 @@ func init() {
 	pflag.StringVarP(&directory, "dir", "d", defaultDirectory, "Folder to be broadcast")
 	pflag.IntVarP(&port, "port", "p", 8080, "Address on which server is broadcasted")
 	pflag.IntVarP(&maxInlineSize, "inlinesize", "k", 24, "Max size of file in MB before being downloaded as attachment (see 'Content-Disposition')")
-	pflag.StringVarP(&forbidden, "exclude", "x", "^\\.", "Exclude directories with matching regexp pattern")
+	pflag.StringVarP(&forbidden, "exclude", "x", `^\.`, "Exclude directories with matching regexp pattern")
 	pflag.BoolVarP(&lazy, "lazy", "l", true, "Enables lazy loading of files. caution: if false will load all files to memory on startup")
 	pflag.BoolVarP(&help, "help", "h", false, "Call help")
 	pflag.BoolVarP(&quiet, "quiet", "q", false, "Run sv quietly (no output).")
@@ -176,14 +176,7 @@ func logf(tag, format string, args []interface{}) {
 }
 
 func getContentType(filename string) string {
-
 	var contentType string
-	// fileTypeIndex := strings.LastIndex(filename, ".")
-	// if fileTypeIndex == -1 || len(filename) == fileTypeIndex+1 { // si el nombre termina con un punto (is that even legal?)
-	// 	contentType = "application/octet-stream"
-	// 	return contentType // Or next part errors!
-	// }
-	// ext := filename[fileTypeIndex+1:] // file extension
 	ext := filepath.Ext(filename)
 	ext = strings.Replace(ext, ".", "", 1)
 	switch ext {
