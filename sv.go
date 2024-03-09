@@ -26,6 +26,7 @@ var (
 	port, maxInlineSize int
 	forbidden           string
 	lazy, help, quiet   bool
+	logRequests         bool
 )
 
 func init() {
@@ -37,6 +38,7 @@ func init() {
 	pflag.BoolVarP(&lazy, "lazy", "l", true, "Enables lazy loading of files. caution: if false will load all files to memory on startup")
 	pflag.BoolVarP(&help, "help", "h", false, "Call help")
 	pflag.BoolVarP(&quiet, "quiet", "q", false, "Run sv quietly (no output).")
+	pflag.BoolVarP(&logRequests, "log", "v", false, "Log requests")
 	pflag.Lookup("help").Hidden = true
 	pflag.Parse()
 	if help {
@@ -133,6 +135,9 @@ func (ep endpoint) fileName() string {
 func (ep *endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var f *os.File
 	var err error
+	if logRequests {
+		printf("%s %s", r.Method, r.URL)
+	}
 	if !lazy {
 		w.Header().Add("Content-Type", ep.contentType)
 		w.Write(ep.content)
@@ -159,7 +164,6 @@ func (ep *endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		errorf("while serving %s, %d bytes copied: %s", ep.path, n, err)
 	}
-	return
 }
 
 func infof(format string, args ...interface{})  { logf("inf", format, args) }
